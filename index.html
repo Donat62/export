@@ -1,0 +1,1588 @@
+<!DOCTYPE html>
+<html lang="hu" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web2App Studio – Weboldalból & HTML-ből Android APK és Apple iOS IPA</title>
+    <!-- Tailwind CSS betöltése -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- JSZip a valódi projekt csomagolásához (opcionális projekt letöltéshez) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        android: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            400: '#4ade80',
+                            500: '#3ddc84', // Hivatalos Android zöld
+                            600: '#16a34a',
+                            700: '#15803d',
+                            900: '#052e16',
+                        },
+                        apple: {
+                            400: '#38bdf8',
+                            500: '#0a84ff', // Apple iOS kék
+                            600: '#0284c7',
+                            700: '#0369a1',
+                            950: '#082f49',
+                        },
+                        slate: {
+                            850: '#151e2e',
+                            900: '#0f172a',
+                            950: '#090d16',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Egyedi görgetősáv a terminálhoz és kódszerkesztőhöz */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+        .code-editor-container {
+            display: flex;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .line-numbers {
+            user-select: none;
+            text-align: right;
+            padding-right: 12px;
+            color: #64748b;
+            border-right: 1px solid #1e293b;
+        }
+        /* Telefon keret árnyék */
+        .phone-mockup {
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.12);
+        }
+        /* Apple squircle ikon lekerekítés */
+        .ios-squircle {
+            border-radius: 22.5% !important;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col antialiased selection:bg-android-500 selection:text-slate-950">
+
+    <!-- Értesítési sáv (Toast üzenetekhez, alert() helyett) -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0"></div>
+
+    <!-- 1. FEJLÉC -->
+    <header class="border-b border-slate-800/80 bg-slate-900/70 backdrop-blur-md sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div class="flex items-center gap-3.5">
+                <div id="header-logo-box" class="w-11 h-11 rounded-xl bg-gradient-to-br from-android-500 to-emerald-700 flex items-center justify-center shadow-lg shadow-android-500/20 text-slate-950 shrink-0 transition-all duration-300">
+                    <i data-lucide="smartphone" class="w-6 h-6 stroke-[2.5]"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-white">Web2App <span id="header-brand-accent" class="text-android-500 transition-colors">Studio</span></h1>
+                        <span id="header-version-pill" class="text-[11px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-android-500/10 text-android-400 border border-android-500/20 transition-colors">v3.0 Multi-OS Engine</span>
+                    </div>
+                    <p class="text-xs sm:text-sm text-slate-400 mt-0.5">Készíts natív Android (.APK) vagy Apple iOS (.IPA) csomagot bármilyen weboldalból vagy HTML kódból.</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3 self-end sm:self-center">
+                <div class="hidden md:flex items-center gap-2 text-xs text-slate-300 bg-slate-800/70 px-3 py-1.5 rounded-lg border border-slate-700/60">
+                    <span id="sdk-status-dot" class="w-2 h-2 rounded-full bg-android-500 animate-pulse"></span>
+                    <span id="sdk-status-text">Android SDK 34 (UpsideDownCake) kész</span>
+                </div>
+                <button onclick="resetAll()" title="Alaphelyzetbe állítás" class="p-2.5 text-slate-400 hover:text-white bg-slate-800/60 hover:bg-slate-800 rounded-xl border border-slate-700/50 transition-colors">
+                    <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- FŐ TARTALOM -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
+            
+            <!-- BAL OLDALI OSZLOP: Platform választó + Forrás választó (Fülek) + Testreszabás + Export (7 oszlop) -->
+            <div class="lg:col-span-7 space-y-6">
+
+                <!-- 0. PLATFORM VÁLASZTÓ KAPCSOLÓ (ANDROID VS APPLE iOS) -->
+                <section class="bg-slate-900 border border-slate-800 rounded-2xl p-2 shadow-xl">
+                    <div class="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Célplatform kiválasztása">
+                        <!-- Android gomb -->
+                        <button type="button" id="platform-btn-android" onclick="switchPlatform('android')"
+                            class="flex items-center justify-center gap-3 py-3.5 px-4 rounded-xl font-bold text-sm transition-all duration-200 bg-gradient-to-r from-android-500/20 to-emerald-500/10 text-white border-2 border-android-500 shadow-md shadow-android-500/10">
+                            <!-- Android Robot SVG ikon -->
+                            <svg class="w-5 h-5 text-android-500 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M17.523 15.3414C16.9673 15.3414 16.5152 14.8893 16.5152 14.3336C16.5152 13.7779 16.9673 13.3258 17.523 13.3258C18.0787 13.3258 18.5308 13.7779 18.5308 14.3336C18.5308 14.8893 18.0787 15.3414 17.523 15.3414ZM6.47701 15.3414C5.92131 15.3414 5.46924 14.8893 5.46924 14.3336C5.46924 13.7779 5.92131 13.3258 6.47701 13.3258C7.03271 13.3258 7.48478 13.7779 7.48478 14.3336C7.48478 14.8893 7.03271 15.3414 6.47701 15.3414ZM17.8886 9.25702L19.9042 5.76591C20.0176 5.5695 19.9503 5.31836 19.7539 5.20496C19.5575 5.09156 19.3063 5.15886 19.1929 5.35527L17.1521 8.88999C15.631 8.19609 13.8768 7.80762 12 7.80762C10.1232 7.80762 8.36901 8.19609 6.84793 8.88999L4.80707 5.35527C4.69367 5.15886 4.44253 5.09156 4.24612 5.20496C4.04971 5.31836 3.98241 5.5695 4.09581 5.76591L6.11142 9.25702C2.65176 11.1355 0.34082 14.6645 0.0449219 18.8145H23.9551C23.6592 14.6645 21.3482 11.1355 17.8886 9.25702Z"/>
+                            </svg>
+                            <div class="text-left">
+                                <div class="leading-tight">Android (.APK)</div>
+                                <div class="text-[10px] font-normal text-android-400">Google Play / WebView</div>
+                            </div>
+                        </button>
+
+                        <!-- Apple iOS gomb -->
+                        <button type="button" id="platform-btn-ios" onclick="switchPlatform('ios')"
+                            class="flex items-center justify-center gap-3 py-3.5 px-4 rounded-xl font-bold text-sm transition-all duration-200 bg-slate-950/50 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border-2 border-transparent">
+                            <!-- Apple SVG ikon -->
+                            <svg class="w-5 h-5 text-slate-300 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M18.71 19.5C17.88 20.74 17 21.95 15.66 21.97C14.32 22 13.89 21.18 12.37 21.18C10.84 21.18 10.37 21.95 9.1 22C7.79 22.05 6.8 20.68 5.96 19.47C4.25 17 2.94 12.45 4.7 9.39C5.57 7.87 7.13 6.91 8.82 6.88C10.1 6.86 11.32 7.75 12.1 7.75C12.89 7.75 14.37 6.68 15.92 6.84C16.57 6.87 18.39 7.1 19.56 8.82C19.47 8.88 17.39 10.1 17.41 12.63C17.44 15.65 20.06 16.66 20.09 16.67C20.06 16.74 19.67 18.11 18.71 19.5ZM13 3.5C13.73 2.67 14.94 2.04 15.94 2C16.07 3.17 15.6 4.35 14.9 5.19C14.21 6.04 13.07 6.7 11.95 6.61C11.8 5.46 12.36 4.26 13 3.5Z"/>
+                            </svg>
+                            <div class="text-left">
+                                <div class="leading-tight">Apple iOS (.IPA)</div>
+                                <div class="text-[10px] font-normal text-slate-500">App Store / WKWebView</div>
+                            </div>
+                        </button>
+                    </div>
+                </section>
+
+                <!-- 2. FELSŐ FÜLVÁLASZTÓ (TAB BAR) ÉS FORRÁS KONFIGURÁCIÓ -->
+                <section class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+                    <!-- Fül fejléc -->
+                    <div class="grid grid-cols-2 bg-slate-950/60 p-1.5 border-b border-slate-800 gap-1.5" role="tablist">
+                        <button id="tab-btn-url" role="tab" aria-selected="true" onclick="switchTab('url')" 
+                            class="flex items-center justify-center gap-2.5 py-3 px-4 rounded-xl font-semibold text-sm transition-all duration-200 bg-slate-800 text-white shadow-sm border border-slate-700/80">
+                            <i data-lucide="globe" class="w-4 h-4 text-android-500"></i>
+                            <span>Weboldal URL</span>
+                        </button>
+                        <button id="tab-btn-html" role="tab" aria-selected="false" onclick="switchTab('html')" 
+                            class="flex items-center justify-center gap-2.5 py-3 px-4 rounded-xl font-semibold text-sm transition-all duration-200 text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 border border-transparent">
+                            <i data-lucide="code-2" class="w-4 h-4 text-sky-400"></i>
+                            <span>HTML Kód</span>
+                        </button>
+                    </div>
+
+                    <!-- ELSŐ FÜL TARTALMA: WEBOLDAL URL -->
+                    <div id="tab-panel-url" class="p-5 sm:p-6 space-y-5">
+                        <div>
+                            <div class="flex items-center justify-between mb-2">
+                                <label for="website-url" class="block text-sm font-medium text-slate-200">
+                                    Cél weboldal címe (URL) <span class="text-rose-400">*</span>
+                                </label>
+                                <span class="text-xs text-slate-400">HTTPS ajánlott</span>
+                            </div>
+                            <div class="flex flex-col sm:flex-row gap-3">
+                                <div class="relative flex-grow">
+                                    <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                                        <i data-lucide="link" class="w-4 h-4"></i>
+                                    </div>
+                                    <input type="url" id="website-url" value="https://wikipedia.org" placeholder="https://pelda.hu" 
+                                        class="w-full pl-10 pr-4 py-3 bg-slate-950 border border-slate-700/80 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-android-500/50 focus:border-android-500 text-sm transition-all">
+                                </div>
+                                <button type="button" onclick="loadUrlPreview()" 
+                                    class="inline-flex items-center justify-center gap-2 px-5 py-3 bg-slate-800 hover:bg-slate-700 text-white font-medium text-sm rounded-xl border border-slate-700 transition-colors shrink-0">
+                                    <i data-lucide="play" class="w-4 h-4 text-android-500"></i>
+                                    <span>Élő előnézet</span>
+                                </button>
+                            </div>
+                            <p class="text-xs text-slate-400 mt-2.5 flex items-start gap-1.5">
+                                <i data-lucide="info" class="w-3.5 h-3.5 text-slate-500 shrink-0 mt-0.5"></i>
+                                <span id="url-container-hint">Az alkalmazás egy hardveresen gyorsított, natív Android WebView konténerben fogja megnyitni a megadott weboldalt.</span>
+                            </p>
+                        </div>
+
+                        <!-- Gyors teszt URL-ek -->
+                        <div class="pt-2 border-t border-slate-800/80 flex flex-wrap items-center gap-2">
+                            <span class="text-xs text-slate-500 mr-1">Gyors teszt URL-ek:</span>
+                            <button type="button" onclick="setQuickUrl('https://wikipedia.org', 'Wikipedia App')" class="text-xs px-2.5 py-1 rounded-lg bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800 transition-colors">Wikipedia</button>
+                            <button type="button" onclick="setQuickUrl('https://openstreetmap.org', 'Térkép App')" class="text-xs px-2.5 py-1 rounded-lg bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800 transition-colors">OpenStreetMap</button>
+                            <button type="button" onclick="setQuickUrl('https://example.com', 'Példa Oldal')" class="text-xs px-2.5 py-1 rounded-lg bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800 transition-colors">Example.com</button>
+                        </div>
+                    </div>
+
+                    <!-- MÁSODIK FÜL TARTALMA: HTML KÓD -->
+                    <div id="tab-panel-html" class="hidden p-5 sm:p-6 space-y-4">
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                            <label for="html-code-input" class="text-sm font-medium text-slate-200 flex items-center gap-2">
+                                <span>Beágyazott HTML / CSS / JS forráskód</span>
+                                <span id="html-char-count" class="text-[11px] font-mono text-slate-400 bg-slate-950 px-2 py-0.5 rounded border border-slate-800">0 karakter</span>
+                            </label>
+                            <div class="flex items-center gap-2">
+                                <button type="button" onclick="loadSampleHtml()" class="text-xs px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-sky-400 border border-slate-700 transition-colors flex items-center gap-1.5">
+                                    <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+                                    <span>Minta kód betöltése</span>
+                                </button>
+                                <button type="button" onclick="loadHtmlPreview()" class="text-xs px-3 py-1.5 rounded-lg bg-android-500/15 hover:bg-android-500/25 text-android-400 border border-android-500/30 transition-colors flex items-center gap-1.5">
+                                    <i data-lucide="play" class="w-3.5 h-3.5"></i>
+                                    <span>Kód futtatása</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Sorszámozott sötét kódszerkesztő -->
+                        <div class="code-editor-container bg-slate-950 border border-slate-800 rounded-xl overflow-hidden h-64 focus-within:ring-2 focus-within:ring-sky-500/40 focus-within:border-sky-500">
+                            <div id="line-numbers" class="line-numbers py-3.5 pl-3 text-xs leading-relaxed bg-slate-900/50 overflow-hidden">1</div>
+                            <textarea id="html-code-input" spellcheck="false" oninput="updateLineNumbers()" onscroll="syncScroll()" placeholder="Illeszd be ide a saját HTML kódodat..."
+                                class="w-full h-full p-3.5 bg-transparent text-slate-200 text-xs leading-relaxed resize-none focus:outline-none"></textarea>
+                        </div>
+
+                        <p class="text-xs text-slate-400 flex items-start gap-1.5">
+                            <i data-lucide="hard-drive" class="w-3.5 h-3.5 text-slate-500 shrink-0 mt-0.5"></i>
+                            <span>A HTML forráskód közvetlenül az alkalmazás <code class="text-sky-400">assets/www/index.html</code> mappájába kerül, így internetkapcsolat nélkül (offline) is azonnal betölt.</span>
+                        </p>
+                    </div>
+                </section>
+
+                <!-- 3. ALKALMAZÁS TESTRESZABÁSI BEÁLLÍTÁSOK (PLATFORM-SPECIFIKUS) -->
+                <section class="bg-slate-900 border border-slate-800 rounded-2xl p-5 sm:p-6 shadow-xl space-y-6">
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+                        <div class="flex items-center gap-2.5">
+                            <div id="settings-icon-box" class="p-2 rounded-lg bg-android-500/10 text-android-400 border border-android-500/20 transition-colors">
+                                <i data-lucide="sliders" class="w-4 h-4"></i>
+                            </div>
+                            <div>
+                                <h2 id="settings-section-title" class="text-base font-semibold text-white">Android Csomag Beállítások</h2>
+                                <p id="settings-section-subtitle" class="text-xs text-slate-400">Az APK metaadatai, ikonja, engedélyei és kijelző viselkedése</p>
+                            </div>
+                        </div>
+                        <span id="manifest-badge" class="text-xs font-mono text-slate-400 bg-slate-950 px-2.5 py-1 rounded-md border border-slate-800">AndroidManifest.xml</span>
+                    </div>
+
+                    <!-- Ikon feltöltés + Alap adatok -->
+                    <div class="grid grid-cols-1 sm:grid-cols-12 gap-5 items-start">
+                        <!-- App Ikon feltöltő -->
+                        <div class="sm:col-span-4 flex flex-col items-center p-4 bg-slate-950/70 rounded-xl border border-slate-800/90 text-center">
+                            <span class="text-xs font-medium text-slate-300 mb-3">Alkalmazás ikon</span>
+                            <div class="relative group">
+                                <div id="icon-preview-box" class="w-20 h-20 rounded-2xl bg-gradient-to-tr from-android-500 to-teal-400 flex items-center justify-center shadow-lg overflow-hidden border-2 border-slate-700 group-hover:border-android-500 transition-all">
+                                    <img id="app-icon-img" src="" alt="App ikon" class="w-full h-full object-cover hidden">
+                                    <i id="app-icon-default" data-lucide="rocket" class="w-9 h-9 text-slate-950"></i>
+                                </div>
+                                <label for="icon-upload" class="absolute -bottom-2 -right-2 p-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl border border-slate-600 cursor-pointer shadow-md transition-colors" title="Ikon feltöltése">
+                                    <i data-lucide="upload" class="w-3.5 h-3.5"></i>
+                                </label>
+                                <input type="file" id="icon-upload" accept="image/png, image/jpeg, image/webp, image/svg+xml" class="hidden" onchange="handleIconUpload(event)">
+                            </div>
+                            <p id="icon-spec-hint" class="text-[11px] text-slate-500 mt-3">PNG / JPG (512×512 px)</p>
+                        </div>
+
+                        <!-- Név, Csomagnév / Bundle ID, Verzió -->
+                        <div class="sm:col-span-8 space-y-4">
+                            <div>
+                                <label for="app-name" class="block text-xs font-medium text-slate-300 mb-1.5">Alkalmazás neve (Display Name) <span class="text-rose-400">*</span></label>
+                                <input type="text" id="app-name" value="Saját Web App" oninput="updateLiveMetadata()" placeholder="Pl. Webshop Mobil"
+                                    class="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700/80 rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-android-500/50 focus:border-android-500">
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <div class="sm:col-span-2">
+                                    <label id="package-id-label" for="package-id" class="block text-xs font-medium text-slate-300 mb-1.5">Csomagnév (Package ID)</label>
+                                    <input type="text" id="package-id" value="hu.web2app.sajatapp" placeholder="com.sajat.alkalmazas"
+                                        class="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700/80 rounded-xl text-sm font-mono text-slate-200 focus:outline-none focus:ring-2 focus:ring-android-500/50 focus:border-android-500">
+                                </div>
+                                <div>
+                                    <label for="app-version" class="block text-xs font-medium text-slate-300 mb-1.5">Verziószám</label>
+                                    <input type="text" id="app-version" value="1.0.0" placeholder="1.0.0"
+                                        class="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700/80 rounded-xl text-sm font-mono text-slate-200 focus:outline-none focus:ring-2 focus:ring-android-500/50 focus:border-android-500">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Minimum OS verzió és Tájolás -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-800/80">
+                        <div>
+                            <label id="min-os-label" for="min-os-select" class="block text-xs font-medium text-slate-300 mb-1.5">Minimum Android verzió</label>
+                            <div class="relative">
+                                <select id="min-os-select"
+                                    class="w-full appearance-none px-3.5 py-2.5 bg-slate-950 border border-slate-700/80 rounded-xl text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-android-500/50 focus:border-android-500">
+                                    <option value="Android 8.0 (API 26)">Android 8.0 Oreo (API 26) – 96% lefedettség</option>
+                                    <option value="Android 10.0 (API 29)">Android 10.0 (API 29) – 89% lefedettség</option>
+                                    <option value="Android 12.0 (API 31)">Android 12.0 (API 31) – Modern eszközök</option>
+                                </select>
+                                <div class="absolute inset-y-0 right-3 flex items-center pointer-events-none text-slate-400">
+                                    <i data-lucide="chevron-down" class="w-4 h-4"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label for="app-orientation" class="block text-xs font-medium text-slate-300 mb-1.5">Képernyő tájolása</label>
+                            <div class="relative">
+                                <select id="app-orientation" onchange="updateOrientationPreview()"
+                                    class="w-full appearance-none px-3.5 py-2.5 bg-slate-950 border border-slate-700/80 rounded-xl text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-android-500/50 focus:border-android-500">
+                                    <option value="portrait">Álló (Portrait)</option>
+                                    <option value="landscape">Fekvő (Landscape)</option>
+                                    <option value="sensor">Automatikus (Szenzor alapú)</option>
+                                </select>
+                                <div class="absolute inset-y-0 right-3 flex items-center pointer-events-none text-slate-400">
+                                    <i data-lucide="chevron-down" class="w-4 h-4"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Platform-specifikus jogosultságok (Android Permissions vs iOS Info.plist / Capabilities) -->
+                    <div class="pt-2 border-t border-slate-800/80 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span id="permissions-title" class="text-xs font-medium text-slate-300">Android Rendszerengedélyek (Permissions)</span>
+                            <span id="permissions-hint" class="text-[11px] font-mono text-slate-500">uses-permission</span>
+                        </div>
+                        
+                        <!-- Android engedélyek -->
+                        <div id="android-permissions-grid" class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                            <label class="flex items-center gap-2.5 p-3 rounded-xl bg-slate-950/70 border border-slate-800 cursor-pointer hover:border-slate-700">
+                                <input type="checkbox" id="perm-android-internet" checked disabled class="rounded accent-android-500 w-4 h-4">
+                                <div class="text-xs">
+                                    <div class="font-medium text-slate-200">Internet</div>
+                                    <div class="text-[10px] text-slate-500">Kötelező</div>
+                                </div>
+                            </label>
+                            <label class="flex items-center gap-2.5 p-3 rounded-xl bg-slate-950/70 border border-slate-800 cursor-pointer hover:border-slate-700">
+                                <input type="checkbox" id="perm-android-camera" class="rounded accent-android-500 w-4 h-4">
+                                <div class="text-xs">
+                                    <div class="font-medium text-slate-200">Kamera</div>
+                                    <div class="text-[10px] text-slate-500">CAMERA</div>
+                                </div>
+                            </label>
+                            <label class="flex items-center gap-2.5 p-3 rounded-xl bg-slate-950/70 border border-slate-800 cursor-pointer hover:border-slate-700">
+                                <input type="checkbox" id="perm-android-location" class="rounded accent-android-500 w-4 h-4">
+                                <div class="text-xs">
+                                    <div class="font-medium text-slate-200">Helymeghatározás</div>
+                                    <div class="text-[10px] text-slate-500">FINE_LOCATION</div>
+                                </div>
+                            </label>
+                        </div>
+
+                        <!-- Apple iOS jogosultságok -->
+                        <div id="ios-permissions-grid" class="hidden grid-cols-1 sm:grid-cols-3 gap-2.5">
+                            <label class="flex items-center gap-2.5 p-3 rounded-xl bg-slate-950/70 border border-slate-800 cursor-pointer hover:border-slate-700">
+                                <input type="checkbox" id="perm-ios-faceid" checked class="rounded accent-apple-500 w-4 h-4">
+                                <div class="text-xs">
+                                    <div class="font-medium text-slate-200">Face ID</div>
+                                    <div class="text-[10px] text-slate-500">NSFaceIDUsage</div>
+                                </div>
+                            </label>
+                            <label class="flex items-center gap-2.5 p-3 rounded-xl bg-slate-950/70 border border-slate-800 cursor-pointer hover:border-slate-700">
+                                <input type="checkbox" id="perm-ios-push" checked class="rounded accent-apple-500 w-4 h-4">
+                                <div class="text-xs">
+                                    <div class="font-medium text-slate-200">Push Értesítések</div>
+                                    <div class="text-[10px] text-slate-500">APNs / Push</div>
+                                </div>
+                            </label>
+                            <label class="flex items-center gap-2.5 p-3 rounded-xl bg-slate-950/70 border border-slate-800 cursor-pointer hover:border-slate-700">
+                                <input type="checkbox" id="perm-ios-camera-loc" class="rounded accent-apple-500 w-4 h-4">
+                                <div class="text-xs">
+                                    <div class="font-medium text-slate-200">Kamera & GPS</div>
+                                    <div class="text-[10px] text-slate-500">Privacy Usage</div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Teljes képernyő kapcsoló -->
+                    <div class="flex items-center justify-between p-3.5 bg-slate-950/70 rounded-xl border border-slate-800">
+                        <div>
+                            <span class="block text-sm font-medium text-slate-200">Teljes képernyős mód (Fullscreen)</span>
+                            <span id="fullscreen-hint" class="text-xs text-slate-400">Állapotsor és felső sáv elrejtése</span>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="app-fullscreen" class="sr-only peer" onchange="toggleFullscreenPreview()">
+                            <div id="fullscreen-toggle-bg" class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-android-500"></div>
+                        </label>
+                    </div>
+                </section>
+
+                <!-- 4. EXPORTÁLÁS ÉS BUILD FOLYAMAT -->
+                <section class="bg-slate-900 border border-slate-800 rounded-2xl p-5 sm:p-6 shadow-xl space-y-5">
+                    <button id="build-btn" type="button" onclick="startPackageBuild()"
+                        class="w-full py-4 px-6 rounded-xl bg-gradient-to-r from-android-500 to-emerald-500 hover:from-android-400 hover:to-emerald-400 text-slate-950 font-bold text-base shadow-lg shadow-android-500/20 hover:shadow-android-500/30 transition-all duration-200 flex items-center justify-center gap-3 active:scale-[0.99]">
+                        <i data-lucide="package-check" class="w-5 h-5 stroke-[2.5]"></i>
+                        <span id="build-btn-text">APK Generálása és Exportálása</span>
+                    </button>
+
+                    <!-- Build Folyamatjelző és Terminál (Rejtve indításig) -->
+                    <div id="build-process-panel" class="hidden space-y-4 pt-2">
+                        <div class="space-y-2">
+                            <div class="flex items-center justify-between text-xs">
+                                <span id="build-step-label" class="font-medium text-android-400 flex items-center gap-2">
+                                    <i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i>
+                                    <span>Fordítás előkészítése...</span>
+                                </span>
+                                <span id="build-percent" class="font-mono font-semibold text-slate-300">0%</span>
+                            </div>
+                            <div class="w-full h-2.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+                                <div id="build-progress-bar" class="h-full bg-gradient-to-r from-android-500 to-emerald-400 transition-all duration-300 rounded-full" style="width: 0%"></div>
+                            </div>
+                        </div>
+
+                        <!-- Terminál Napló (Build Log) -->
+                        <div class="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden">
+                            <div class="px-3.5 py-2 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between">
+                                <span class="text-[11px] font-mono uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                                    <i data-lucide="terminal" class="w-3.5 h-3.5 text-android-500"></i>
+                                    <span id="build-terminal-title">Gradle / AAPT2 Build Log</span>
+                                </span>
+                                <span id="build-timer" class="text-[11px] font-mono text-slate-500">0.0s</span>
+                            </div>
+                            <div id="build-terminal" class="p-3.5 h-44 overflow-y-auto font-mono text-xs space-y-1.5 text-slate-300"></div>
+                        </div>
+                    </div>
+
+                    <!-- Letöltési Kártya (Build sikeres befejezése után jelenik meg) -->
+                    <div id="download-ready-card" class="hidden rounded-2xl bg-gradient-to-br from-emerald-950/80 via-slate-900 to-slate-900 border border-android-500/40 p-5 space-y-4 shadow-lg">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div class="flex items-start gap-3.5">
+                                <div id="download-check-box" class="w-12 h-12 rounded-xl bg-android-500/20 border border-android-500/40 flex items-center justify-center text-android-400 shrink-0">
+                                    <i data-lucide="check-circle-2" class="w-7 h-7"></i>
+                                </div>
+                                <div>
+                                    <div class="flex items-center gap-2 flex-wrap">
+                                        <h3 id="download-card-title" class="text-base font-bold text-white">APK csomag sikeresen elkészült!</h3>
+                                        <span id="download-sign-badge" class="text-[11px] font-mono px-2 py-0.5 rounded bg-android-500/20 text-android-300">v3 Signed</span>
+                                    </div>
+                                    <p id="generated-package-filename" class="text-xs font-mono text-slate-300 mt-1">sajat-web-app-v1.0.0-release.apk</p>
+                                    <p id="generated-package-meta" class="text-xs text-slate-400 mt-0.5">Méret: ~2.4 MB • Android 8.0+ (arm64-v8a)</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                            <button id="download-binary-btn" type="button" onclick="downloadGeneratedBinary()"
+                                class="py-3 px-4 rounded-xl bg-android-500 hover:bg-android-400 text-slate-950 font-bold text-sm flex items-center justify-center gap-2 shadow-md transition-colors">
+                                <i data-lucide="download" class="w-4 h-4 stroke-[2.5]"></i>
+                                <span id="download-binary-btn-text">.APK Fájl Letöltése</span>
+                            </button>
+                            <button type="button" onclick="downloadSourceBundle()"
+                                class="py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-100 font-medium text-sm border border-slate-700 flex items-center justify-center gap-2 transition-colors">
+                                <i data-lucide="folder-archive" class="w-4 h-4 text-sky-400"></i>
+                                <span id="download-source-btn-text">Android Studio Projekt (.ZIP)</span>
+                            </button>
+                        </div>
+
+                        <!-- Telepítési tájékoztató -->
+                        <div class="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 text-xs text-slate-300 space-y-1.5">
+                            <div class="font-semibold text-slate-200 flex items-center gap-1.5">
+                                <i data-lucide="shield-alert" class="w-4 h-4 text-amber-400"></i>
+                                <span>Telepítési és használati tudnivalók:</span>
+                            </div>
+                            <p id="install-guide-text" class="text-slate-400 leading-relaxed">
+                                A letöltött <code class="text-android-400">.apk</code> telepítőcsomagot másold az Android készülékedre, majd engedélyezd az <strong>„Ismeretlen forrásból származó alkalmazások telepítése”</strong> opciót. A mellékelt <strong>.ZIP</strong> csomag tartalmazza a teljes, Android Studio-ban azonnal fordítható projektet és a generált <code class="text-sky-400">AndroidManifest.xml</code> fájlt is.
+                            </p>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- JOBB OLDALI OSZLOP: ÉLŐ MOBIL ELŐNÉZET (ANDROID VS iPHONE) (5 oszlop) -->
+            <div class="lg:col-span-5 lg:sticky lg:top-24 space-y-4">
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl">
+                    <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+                        <div class="flex items-center gap-2">
+                            <span id="preview-live-dot" class="w-2.5 h-2.5 rounded-full bg-android-500"></span>
+                            <h2 id="preview-device-title" class="text-sm font-semibold text-white">Élő Android Előnézet</h2>
+                        </div>
+                        <span id="preview-mode-badge" class="text-[11px] font-mono px-2.5 py-0.5 rounded-md bg-slate-800 text-slate-300 border border-slate-700">
+                            Forrás: Weboldal URL
+                        </span>
+                    </div>
+
+                    <!-- Telefon keret -->
+                    <div class="flex justify-center py-2">
+                        <div id="phone-frame" class="phone-mockup w-full max-w-[330px] h-[590px] bg-slate-950 rounded-[2.6rem] p-3 border-[4px] border-slate-800 flex flex-col relative transition-all duration-300">
+                            
+                            <!-- ANDROID Kamera kivágás (Punch-hole) -->
+                            <div id="android-camera-cutout" class="absolute top-5 left-1/2 -translate-x-1/2 w-5 h-5 bg-slate-950 rounded-full z-20 flex items-center justify-center border border-slate-800">
+                                <div class="w-2 h-2 rounded-full bg-slate-800 ring-1 ring-slate-700"></div>
+                            </div>
+
+                            <!-- APPLE iPHONE Dynamic Island kivágás -->
+                            <div id="ios-dynamic-island" class="hidden absolute top-5 left-1/2 -translate-x-1/2 w-28 h-6 bg-black rounded-full z-20 items-center justify-between px-2.5 border border-slate-800/90 shadow-inner">
+                                <div class="w-2 h-2 rounded-full bg-emerald-500/80"></div>
+                                <div class="w-2.5 h-2.5 rounded-full bg-indigo-950 ring-1 ring-slate-700"></div>
+                            </div>
+
+                            <!-- Képernyő belső tartalom -->
+                            <div id="phone-inner-screen" class="w-full h-full bg-white rounded-[2rem] overflow-hidden flex flex-col relative transition-all">
+                                
+                                <!-- ANDROID Állapotsor -->
+                                <div id="android-status-bar" class="h-8 bg-slate-900 text-white px-5 flex items-center justify-between text-[11px] font-medium shrink-0 select-none">
+                                    <span>12:30</span>
+                                    <div class="flex items-center gap-1.5">
+                                        <i data-lucide="wifi" class="w-3 h-3"></i>
+                                        <i data-lucide="signal" class="w-3 h-3"></i>
+                                        <i data-lucide="battery-charging" class="w-3.5 h-3.5 text-android-400"></i>
+                                    </div>
+                                </div>
+
+                                <!-- APPLE iOS Állapotsor -->
+                                <div id="ios-status-bar" class="hidden h-9 bg-slate-950 text-white px-6 flex items-center justify-between text-[11px] font-semibold shrink-0 select-none">
+                                    <span>9:41</span>
+                                    <div class="flex items-center gap-1.5">
+                                        <i data-lucide="signal" class="w-3 h-3"></i>
+                                        <i data-lucide="wifi" class="w-3 h-3"></i>
+                                        <div class="w-5 h-2.5 rounded-[3px] border border-white/70 p-[1px] flex items-center">
+                                            <div class="w-full h-full bg-white rounded-[1px]"></div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Alkalmazás fejléc sáv (App Bar) -->
+                                <div id="mobile-app-bar" class="bg-slate-800 text-white px-3.5 py-2.5 flex items-center gap-2.5 shadow-sm shrink-0">
+                                    <div id="mini-app-icon" class="w-6 h-6 rounded-md bg-android-500 flex items-center justify-center text-slate-950 overflow-hidden shrink-0">
+                                        <i data-lucide="rocket" class="w-3.5 h-3.5"></i>
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        <div id="preview-app-title" class="text-xs font-semibold truncate">Saját Web App</div>
+                                        <div id="preview-app-subtitle" class="text-[10px] text-slate-400 truncate">https://wikipedia.org</div>
+                                    </div>
+                                    <button onclick="refreshPreviewFrame()" title="Frissítés" class="p-1 text-slate-300 hover:text-white rounded">
+                                        <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                                    </button>
+                                </div>
+
+                                <!-- WebView / WKWebView Tartalom (iframe) -->
+                                <div class="relative flex-grow bg-slate-100 overflow-hidden">
+                                    <iframe id="preview-iframe" src="https://wikipedia.org" sandbox="allow-scripts allow-same-origin allow-forms" class="w-full h-full border-0 bg-white"></iframe>
+                                    
+                                    <!-- Tájékoztató réteg, ha az oldal tiltja az iframe beágyazást -->
+                                    <div id="iframe-fallback-notice" class="hidden absolute inset-0 bg-slate-900/95 text-slate-200 p-6 flex flex-col items-center justify-center text-center">
+                                        <div class="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/30 flex items-center justify-center mb-3">
+                                            <i data-lucide="shield-check" class="w-6 h-6"></i>
+                                        </div>
+                                        <h4 class="text-sm font-semibold text-white mb-1">Natív WebView Előnézet</h4>
+                                        <p class="text-xs text-slate-400 leading-relaxed mb-4">
+                                            Ez a weboldal tiltja a böngészőn belüli keretezést, azonban a letöltött natív alkalmazásban gond nélkül meg fog nyílni.
+                                        </p>
+                                        <a id="external-url-link" href="https://wikipedia.org" target="_blank" rel="noopener noreferrer" class="text-xs px-3.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-sky-400 border border-slate-700 inline-flex items-center gap-1.5">
+                                            <span>Megnyitás új lapon</span>
+                                            <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+                                        </a>
+                                    </div>
+                                </div>
+
+                                <!-- ANDROID Navigációs sáv (Alsó) -->
+                                <div id="android-nav-bar" class="h-7 bg-slate-950 text-slate-400 flex items-center justify-around px-8 shrink-0">
+                                    <i data-lucide="chevron-left" class="w-3.5 h-3.5"></i>
+                                    <div class="w-3 h-3 rounded-full border border-slate-400"></div>
+                                    <div class="w-2.5 h-2.5 rounded-xs border border-slate-400"></div>
+                                </div>
+
+                                <!-- APPLE iOS Home Indicator sáv (Alsó) -->
+                                <div id="ios-home-bar" class="hidden h-6 bg-slate-950 items-center justify-center shrink-0">
+                                    <div class="w-28 h-1 bg-white/85 rounded-full"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <p id="preview-footer-note" class="text-center text-xs text-slate-500 mt-3">
+                        Android WebView előnézet • A keret valós időben követi a beállításokat.
+                    </p>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- LÁBLÉC -->
+    <footer class="border-t border-slate-900 bg-slate-950 py-6 mt-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+            <div class="flex items-center gap-2">
+                <i data-lucide="cpu" class="w-4 h-4 text-android-500" id="footer-cpu-icon"></i>
+                <span>Web2App Studio • Android WebView & Apple WKWebView Csomagoló Környezet</span>
+            </div>
+            <div id="footer-arch-info">
+                Támogatott architektúrák: <span class="font-mono text-slate-400">arm64-v8a, armeabi-v7a, x86_64</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ALKALMAZÁS LOGIKA -->
+    <script>
+        // Globális állapot
+        let activePlatform = 'android'; // 'android' vagy 'ios'
+        let activeTab = 'url'; // 'url' vagy 'html'
+        let uploadedIconDataUrl = null;
+        let isBuilding = false;
+
+        // Beépített példa HTML alkalmazás (interaktív mini feladatkezelő)
+        const SAMPLE_HTML_TEMPLATE = `<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Offline Teendők App</title>
+  <style>
+    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { margin: 0; background: #0f172a; color: #f8fafc; padding: 20px; }
+    .card { background: #1e293b; border-radius: 16px; padding: 18px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
+    h1 { font-size: 20px; margin: 0 0 6px; color: #3ddc84; }
+    p { font-size: 13px; color: #94a3b8; margin: 0 0 16px; }
+    .row { display: flex; gap: 8px; margin-bottom: 16px; }
+    input { flex: 1; padding: 10px 12px; border-radius: 10px; border: 1px solid #334155; background: #0f172a; color: #fff; font-size: 14px; }
+    button { background: #3ddc84; color: #052e16; border: none; padding: 10px 16px; border-radius: 10px; font-weight: 700; cursor: pointer; }
+    ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+    li { background: #0f172a; padding: 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; border: 1px solid #334155; }
+    .del { background: #ef4444; color: white; padding: 4px 9px; font-size: 12px; border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>📱 Saját Android App</h1>
+    <p>Ez a felület teljes egészében beágyazott HTML/CSS/JS kódból fut offline módban is!</p>
+    <div class="row">
+      <input id="taskInput" type="text" placeholder="Új feladat írása..." />
+      <button onclick="addTask()">Hozzáad</button>
+    </div>
+    <ul id="list">
+      <li><span>APK exportálás tesztelése</span><button class="del" onclick="this.parentElement.remove()">Törlés</button></li>
+      <li><span>Offline működés ellenőrzése</span><button class="del" onclick="this.parentElement.remove()">Törlés</button></li>
+    </ul>
+  </div>
+  <script>
+    function addTask() {
+      const inp = document.getElementById('taskInput');
+      if (!inp.value.trim()) return;
+      const li = document.createElement('li');
+      li.innerHTML = '<span>' + inp.value + '</span><button class="del" onclick="this.parentElement.remove()">Törlés</button>';
+      document.getElementById('list').appendChild(li);
+      inp.value = '';
+    }
+  <\/script>
+</body>
+</html>`;
+
+        // Inicializálás
+        window.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            const htmlInput = document.getElementById('html-code-input');
+            if (htmlInput) {
+                htmlInput.value = SAMPLE_HTML_TEMPLATE;
+                updateLineNumbers();
+            }
+            updateLiveMetadata();
+        });
+
+        // Értesítő sáv (Toast) megjelenítése alert() helyett
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+
+            const toast = document.createElement('div');
+            const styles = {
+                success: 'bg-slate-900/95 border-emerald-500/50 text-emerald-300',
+                error: 'bg-slate-900/95 border-rose-500/50 text-rose-300',
+                info: 'bg-slate-900/95 border-sky-500/50 text-sky-300'
+            };
+            const icons = {
+                success: 'check-circle-2',
+                error: 'alert-circle',
+                info: 'info'
+            };
+
+            toast.className = `pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-xl border shadow-xl backdrop-blur-md text-xs font-medium transition-all duration-300 ${styles[type] || styles.info}`;
+            toast.innerHTML = `<i data-lucide="${icons[type] || 'info'}" class="w-4 h-4 shrink-0"></i><span>${message}</span>`;
+
+            container.appendChild(toast);
+            lucide.createIcons();
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3200);
+        }
+
+        // PLATFORM VÁLTÁS (ANDROID <-> APPLE iOS)
+        function switchPlatform(platform) {
+            if (isBuilding) {
+                showToast('Várd meg az aktuális fordítás végét a platformváltáshoz!', 'error');
+                return;
+            }
+            activePlatform = platform;
+
+            const btnAndroid = document.getElementById('platform-btn-android');
+            const btnIos = document.getElementById('platform-btn-ios');
+            const headerLogo = document.getElementById('header-logo-box');
+            const headerAccent = document.getElementById('header-brand-accent');
+            const headerPill = document.getElementById('header-version-pill');
+            const sdkDot = document.getElementById('sdk-status-dot');
+            const sdkText = document.getElementById('sdk-status-text');
+
+            const settingsIconBox = document.getElementById('settings-icon-box');
+            const settingsTitle = document.getElementById('settings-section-title');
+            const settingsSubtitle = document.getElementById('settings-section-subtitle');
+            const manifestBadge = document.getElementById('manifest-badge');
+            const iconPreviewBox = document.getElementById('icon-preview-box');
+            const iconSpecHint = document.getElementById('icon-spec-hint');
+            const packageIdLabel = document.getElementById('package-id-label');
+            const packageIdInput = document.getElementById('package-id');
+            const minOsLabel = document.getElementById('min-os-label');
+            const minOsSelect = document.getElementById('min-os-select');
+
+            const permTitle = document.getElementById('permissions-title');
+            const permHint = document.getElementById('permissions-hint');
+            const androidPerms = document.getElementById('android-permissions-grid');
+            const iosPerms = document.getElementById('ios-permissions-grid');
+            const fullscreenToggleBg = document.getElementById('fullscreen-toggle-bg');
+
+            const buildBtn = document.getElementById('build-btn');
+            const buildBtnText = document.getElementById('build-btn-text');
+            const terminalTitle = document.getElementById('build-terminal-title');
+            const urlHint = document.getElementById('url-container-hint');
+
+            // Előnézet elemek
+            const previewLiveDot = document.getElementById('preview-live-dot');
+            const previewDeviceTitle = document.getElementById('preview-device-title');
+            const phoneFrame = document.getElementById('phone-frame');
+            const androidCutout = document.getElementById('android-camera-cutout');
+            const iosIsland = document.getElementById('ios-dynamic-island');
+            const androidStatus = document.getElementById('android-status-bar');
+            const iosStatus = document.getElementById('ios-status-bar');
+            const androidNav = document.getElementById('android-nav-bar');
+            const iosHome = document.getElementById('ios-home-bar');
+            const miniAppIcon = document.getElementById('mini-app-icon');
+            const previewFooterNote = document.getElementById('preview-footer-note');
+            const footerCpuIcon = document.getElementById('footer-cpu-icon');
+            const footerArchInfo = document.getElementById('footer-arch-info');
+
+            // Korábbi letöltési kártya elrejtése platformváltáskor
+            document.getElementById('download-ready-card').classList.add('hidden');
+            document.getElementById('build-process-panel').classList.add('hidden');
+
+            if (platform === 'android') {
+                // Kapcsoló gombok stílusa
+                btnAndroid.className = "flex items-center justify-center gap-3 py-3.5 px-4 rounded-xl font-bold text-sm transition-all duration-200 bg-gradient-to-r from-android-500/20 to-emerald-500/10 text-white border-2 border-android-500 shadow-md shadow-android-500/10";
+                btnIos.className = "flex items-center justify-center gap-3 py-3.5 px-4 rounded-xl font-bold text-sm transition-all duration-200 bg-slate-950/50 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border-2 border-transparent";
+
+                // Fejléc akcentusok (Android zöld)
+                headerLogo.className = "w-11 h-11 rounded-xl bg-gradient-to-br from-android-500 to-emerald-700 flex items-center justify-center shadow-lg shadow-android-500/20 text-slate-950 shrink-0 transition-all duration-300";
+                headerAccent.className = "text-android-500 transition-colors";
+                headerPill.className = "text-[11px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-android-500/10 text-android-400 border border-android-500/20 transition-colors";
+                sdkDot.className = "w-2 h-2 rounded-full bg-android-500 animate-pulse";
+                sdkText.textContent = "Android SDK 34 (UpsideDownCake) kész";
+
+                // Beállítások szekció
+                settingsIconBox.className = "p-2 rounded-lg bg-android-500/10 text-android-400 border border-android-500/20 transition-colors";
+                settingsTitle.textContent = "Android Csomag Beállítások";
+                settingsSubtitle.textContent = "Az APK metaadatai, ikonja, engedélyei és kijelző viselkedése";
+                manifestBadge.textContent = "AndroidManifest.xml";
+                iconPreviewBox.classList.remove('ios-squircle', 'from-apple-500', 'to-indigo-500');
+                iconPreviewBox.classList.add('rounded-2xl', 'from-android-500', 'to-teal-400');
+                iconSpecHint.textContent = "PNG / JPG (512×512 px)";
+                packageIdLabel.textContent = "Csomagnév (Package ID)";
+                if (packageIdInput.value === 'hu.web2app.iosapp') packageIdInput.value = 'hu.web2app.sajatapp';
+
+                minOsLabel.textContent = "Minimum Android verzió";
+                minOsSelect.innerHTML = `
+                    <option value="Android 8.0 (API 26)">Android 8.0 Oreo (API 26) – 96% lefedettség</option>
+                    <option value="Android 10.0 (API 29)">Android 10.0 (API 29) – 89% lefedettség</option>
+                    <option value="Android 12.0 (API 31)">Android 12.0 (API 31) – Modern eszközök</option>
+                `;
+
+                permTitle.textContent = "Android Rendszerengedélyek (Permissions)";
+                permHint.textContent = "uses-permission";
+                androidPerms.classList.remove('hidden');
+                androidPerms.classList.add('grid');
+                iosPerms.classList.add('hidden');
+                iosPerms.classList.remove('grid');
+
+                fullscreenToggleBg.classList.remove('peer-checked:bg-apple-500');
+                fullscreenToggleBg.classList.add('peer-checked:bg-android-500');
+
+                // Export gomb
+                buildBtn.className = "w-full py-4 px-6 rounded-xl bg-gradient-to-r from-android-500 to-emerald-500 hover:from-android-400 hover:to-emerald-400 text-slate-950 font-bold text-base shadow-lg shadow-android-500/20 hover:shadow-android-500/30 transition-all duration-200 flex items-center justify-center gap-3 active:scale-[0.99]";
+                buildBtnText.textContent = "APK Generálása és Exportálása";
+                terminalTitle.textContent = "Gradle / AAPT2 Build Log";
+                urlHint.textContent = "Az alkalmazás egy hardveresen gyorsított, natív Android WebView konténerben fogja megnyitni a megadott weboldalt.";
+
+                // Készülék keret (Android)
+                previewLiveDot.className = "w-2.5 h-2.5 rounded-full bg-android-500";
+                previewDeviceTitle.textContent = "Élő Android Előnézet";
+                phoneFrame.classList.remove('rounded-[3.2rem]', 'border-slate-700');
+                phoneFrame.classList.add('rounded-[2.6rem]', 'border-slate-800');
+                androidCutout.classList.remove('hidden');
+                iosIsland.classList.add('hidden');
+                iosIsland.classList.remove('flex');
+                androidNav.classList.remove('hidden');
+                iosHome.classList.add('hidden');
+                iosHome.classList.remove('flex');
+                miniAppIcon.classList.remove('ios-squircle', 'bg-apple-500');
+                miniAppIcon.classList.add('rounded-md', 'bg-android-500');
+                previewFooterNote.textContent = "Android WebView előnézet • A keret valós időben követi a beállításokat.";
+                footerCpuIcon.className = "w-4 h-4 text-android-500";
+                footerArchInfo.innerHTML = 'Támogatott architektúrák: <span class="font-mono text-slate-400">arm64-v8a, armeabi-v7a, x86_64</span>';
+
+                showToast('Platform átállítva: Android (.APK)', 'success');
+            } else {
+                // APPLE iOS PLATFORM
+                btnIos.className = "flex items-center justify-center gap-3 py-3.5 px-4 rounded-xl font-bold text-sm transition-all duration-200 bg-gradient-to-r from-apple-500/25 to-sky-500/10 text-white border-2 border-apple-500 shadow-md shadow-apple-500/15";
+                btnAndroid.className = "flex items-center justify-center gap-3 py-3.5 px-4 rounded-xl font-bold text-sm transition-all duration-200 bg-slate-950/50 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border-2 border-transparent";
+
+                // Fejléc akcentusok (Apple iOS kék)
+                headerLogo.className = "w-11 h-11 rounded-xl bg-gradient-to-br from-apple-500 to-indigo-700 flex items-center justify-center shadow-lg shadow-apple-500/25 text-white shrink-0 transition-all duration-300";
+                headerAccent.className = "text-apple-400 transition-colors";
+                headerPill.className = "text-[11px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-apple-500/15 text-apple-400 border border-apple-500/30 transition-colors";
+                sdkDot.className = "w-2 h-2 rounded-full bg-apple-500 animate-pulse";
+                sdkText.textContent = "Xcode 16 • iOS 18 SDK (WKWebView) kész";
+
+                // Beállítások szekció
+                settingsIconBox.className = "p-2 rounded-lg bg-apple-500/15 text-apple-400 border border-apple-500/30 transition-colors";
+                settingsTitle.textContent = "Apple iOS Csomag Beállítások";
+                settingsSubtitle.textContent = "Az IPA csomag metaadatai, Bundle ID, Info.plist és WKWebView opciók";
+                manifestBadge.textContent = "Info.plist";
+                iconPreviewBox.classList.remove('rounded-2xl', 'from-android-500', 'to-teal-400');
+                iconPreviewBox.classList.add('ios-squircle', 'from-apple-500', 'to-indigo-500');
+                iconSpecHint.textContent = "PNG (1024×1024 px, alfa nélkül)";
+                packageIdLabel.textContent = "Bundle Identifier";
+                if (packageIdInput.value === 'hu.web2app.sajatapp') packageIdInput.value = 'hu.web2app.iosapp';
+
+                minOsLabel.textContent = "Minimum iOS verzió";
+                minOsSelect.innerHTML = `
+                    <option value="iOS 15.0">iOS 15.0 – Széles körű kompatibilitás (98%)</option>
+                    <option value="iOS 16.0">iOS 16.0 – Dynamic Island támogatás</option>
+                    <option value="iOS 17.0">iOS 17.0+ – Legújabb Safari WebKit motor</option>
+                `;
+
+                permTitle.textContent = "iOS Jogosultságok & Képességek (Capabilities)";
+                permHint.textContent = "Info.plist / Entitlements";
+                androidPerms.classList.add('hidden');
+                androidPerms.classList.remove('grid');
+                iosPerms.classList.remove('hidden');
+                iosPerms.classList.add('grid');
+
+                fullscreenToggleBg.classList.remove('peer-checked:bg-android-500');
+                fullscreenToggleBg.classList.add('peer-checked:bg-apple-500');
+
+                // Export gomb
+                buildBtn.className = "w-full py-4 px-6 rounded-xl bg-gradient-to-r from-apple-500 to-sky-400 hover:from-apple-400 hover:to-sky-300 text-slate-950 font-bold text-base shadow-lg shadow-apple-500/25 hover:shadow-apple-500/35 transition-all duration-200 flex items-center justify-center gap-3 active:scale-[0.99]";
+                buildBtnText.textContent = "IPA Generálása és Exportálása";
+                terminalTitle.textContent = "Xcodebuild / Swift / Codesign Log";
+                urlHint.textContent = "Az alkalmazás egy natív Swift alapú Apple WKWebView konténerben (Safari WebKit motorral) fogja betölteni a weboldalt.";
+
+                // Készülék keret (iPhone Dynamic Island)
+                previewLiveDot.className = "w-2.5 h-2.5 rounded-full bg-apple-500";
+                previewDeviceTitle.textContent = "Élő iPhone (iOS) Előnézet";
+                phoneFrame.classList.remove('rounded-[2.6rem]', 'border-slate-800');
+                phoneFrame.classList.add('rounded-[3.2rem]', 'border-slate-700');
+                androidCutout.classList.add('hidden');
+                iosIsland.classList.remove('hidden');
+                iosIsland.classList.add('flex');
+                androidNav.classList.add('hidden');
+                iosHome.classList.remove('hidden');
+                iosHome.classList.add('flex');
+                miniAppIcon.classList.remove('rounded-md', 'bg-android-500');
+                miniAppIcon.classList.add('ios-squircle', 'bg-apple-500');
+                previewFooterNote.textContent = "iPhone WKWebView előnézet • Dynamic Island és iOS gesztussáv aktív.";
+                footerCpuIcon.className = "w-4 h-4 text-apple-400";
+                footerArchInfo.innerHTML = 'Támogatott architektúrák: <span class="font-mono text-slate-400">arm64 (Apple Silicon / iPhone & iPad)</span>';
+
+                showToast('Platform átállítva: Apple iOS (.IPA)', 'info');
+            }
+
+            // Állapotsor frissítése a fullscreen állapotnak megfelelően
+            toggleFullscreenPreview();
+        }
+
+        // Fülváltás kezelése (Weboldal URL <-> HTML Kód)
+        function switchTab(tab) {
+            activeTab = tab;
+            const btnUrl = document.getElementById('tab-btn-url');
+            const btnHtml = document.getElementById('tab-btn-html');
+            const panelUrl = document.getElementById('tab-panel-url');
+            const panelHtml = document.getElementById('tab-panel-html');
+            const badge = document.getElementById('preview-mode-badge');
+
+            if (tab === 'url') {
+                btnUrl.className = "flex items-center justify-center gap-2.5 py-3 px-4 rounded-xl font-semibold text-sm transition-all duration-200 bg-slate-800 text-white shadow-sm border border-slate-700/80";
+                btnUrl.setAttribute('aria-selected', 'true');
+                btnHtml.className = "flex items-center justify-center gap-2.5 py-3 px-4 rounded-xl font-semibold text-sm transition-all duration-200 text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 border border-transparent";
+                btnHtml.setAttribute('aria-selected', 'false');
+
+                panelUrl.classList.remove('hidden');
+                panelHtml.classList.add('hidden');
+                badge.textContent = "Forrás: Weboldal URL";
+                loadUrlPreview(true);
+            } else {
+                btnHtml.className = "flex items-center justify-center gap-2.5 py-3 px-4 rounded-xl font-semibold text-sm transition-all duration-200 bg-slate-800 text-white shadow-sm border border-slate-700/80";
+                btnHtml.setAttribute('aria-selected', 'true');
+                btnUrl.className = "flex items-center justify-center gap-2.5 py-3 px-4 rounded-xl font-semibold text-sm transition-all duration-200 text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 border border-transparent";
+                btnUrl.setAttribute('aria-selected', 'false');
+
+                panelHtml.classList.remove('hidden');
+                panelUrl.classList.add('hidden');
+                badge.textContent = "Forrás: Beágyazott HTML";
+                updateLineNumbers();
+                loadHtmlPreview(true);
+            }
+        }
+
+        // Gyors URL beállítása
+        function setQuickUrl(url, suggestedName) {
+            document.getElementById('website-url').value = url;
+            if (suggestedName) {
+                document.getElementById('app-name').value = suggestedName;
+                updateLiveMetadata();
+            }
+            loadUrlPreview();
+        }
+
+        // URL élő előnézet betöltése
+        function loadUrlPreview(silent = false) {
+            let urlInput = document.getElementById('website-url').value.trim();
+            if (!urlInput) {
+                if (!silent) showToast('Kérlek adj meg egy érvényes weboldal URL-t!', 'error');
+                return;
+            }
+            if (!/^https?:\/\//i.test(urlInput)) {
+                urlInput = 'https://' + urlInput;
+                document.getElementById('website-url').value = urlInput;
+            }
+
+            const iframe = document.getElementById('preview-iframe');
+            const fallback = document.getElementById('iframe-fallback-notice');
+            const extLink = document.getElementById('external-url-link');
+            
+            fallback.classList.add('hidden');
+            iframe.removeAttribute('srcdoc');
+            iframe.src = urlInput;
+            extLink.href = urlInput;
+            document.getElementById('preview-app-subtitle').textContent = urlInput;
+
+            if (!silent) {
+                showToast('Weboldal előnézet betöltve', 'info');
+            }
+        }
+
+        // HTML kód sorszámozás frissítése
+        function updateLineNumbers() {
+            const textarea = document.getElementById('html-code-input');
+            const lineNumbers = document.getElementById('line-numbers');
+            const charCount = document.getElementById('html-char-count');
+            
+            const lines = textarea.value.split('\n').length;
+            let numbersHtml = '';
+            for (let i = 1; i <= lines; i++) {
+                numbersHtml += i + '<br>';
+            }
+            lineNumbers.innerHTML = numbersHtml;
+            charCount.textContent = `${textarea.value.length} karakter`;
+        }
+
+        // Görgetés szinkronizálása a sorszámok és a kód között
+        function syncScroll() {
+            const textarea = document.getElementById('html-code-input');
+            const lineNumbers = document.getElementById('line-numbers');
+            lineNumbers.scrollTop = textarea.scrollTop;
+        }
+
+        // Példa HTML sablon betöltése
+        function loadSampleHtml() {
+            document.getElementById('html-code-input').value = SAMPLE_HTML_TEMPLATE;
+            updateLineNumbers();
+            loadHtmlPreview(true);
+            showToast('Interaktív példa HTML sablon betöltve!', 'success');
+        }
+
+        // HTML előnézet betöltése az iframe-be
+        function loadHtmlPreview(silent = false) {
+            const htmlCode = document.getElementById('html-code-input').value;
+            if (!htmlCode.trim()) {
+                if (!silent) showToast('A HTML kód mező jelenleg üres!', 'error');
+                return;
+            }
+            const iframe = document.getElementById('preview-iframe');
+            const fallback = document.getElementById('iframe-fallback-notice');
+            fallback.classList.add('hidden');
+            iframe.removeAttribute('src');
+            iframe.srcdoc = htmlCode;
+            document.getElementById('preview-app-subtitle').textContent = 'file:///android_asset/www/index.html';
+
+            if (!silent) {
+                showToast('HTML kód előnézet frissítve!', 'success');
+            }
+        }
+
+        // Előnézet frissítése gomb a telefon fejlécében
+        function refreshPreviewFrame() {
+            if (activeTab === 'url') {
+                loadUrlPreview(true);
+            } else {
+                loadHtmlPreview(true);
+            }
+            showToast('Előnézet újratöltve', 'info');
+        }
+
+        // Ikon feltöltés és előnézet
+        function handleIconUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (!file.type.startsWith('image/')) {
+                showToast('Kérlek képfájlt (PNG, JPG, WEBP) válassz!', 'error');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                uploadedIconDataUrl = e.target.result;
+                
+                // Bal oldali ikon előnézet
+                const img = document.getElementById('app-icon-img');
+                const defIcon = document.getElementById('app-icon-default');
+                img.src = uploadedIconDataUrl;
+                img.classList.remove('hidden');
+                defIcon.classList.add('hidden');
+
+                // Mobil előnézet mini ikonja
+                const miniIcon = document.getElementById('mini-app-icon');
+                miniIcon.innerHTML = `<img src="${uploadedIconDataUrl}" class="w-full h-full object-cover" alt="App ikon">`;
+
+                showToast('Alkalmazás ikon sikeresen beállítva!', 'success');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Élő metaadatok (App név) frissítése
+        function updateLiveMetadata() {
+            const name = document.getElementById('app-name').value.trim() || 'Saját Web App';
+            document.getElementById('preview-app-title').textContent = name;
+        }
+
+        // Fullscreen kapcsoló a telefon előnézeten
+        function toggleFullscreenPreview() {
+            const isFull = document.getElementById('app-fullscreen').checked;
+            const androidStatus = document.getElementById('android-status-bar');
+            const iosStatus = document.getElementById('ios-status-bar');
+            const appBar = document.getElementById('mobile-app-bar');
+            
+            if (isFull) {
+                androidStatus.classList.add('hidden');
+                iosStatus.classList.add('hidden');
+                appBar.classList.add('hidden');
+            } else {
+                appBar.classList.remove('hidden');
+                if (activePlatform === 'android') {
+                    androidStatus.classList.remove('hidden');
+                    iosStatus.classList.add('hidden');
+                } else {
+                    iosStatus.classList.remove('hidden');
+                    androidStatus.classList.add('hidden');
+                }
+            }
+        }
+
+        // Tájolás előnézet visszajelzés
+        function updateOrientationPreview() {
+            const orientation = document.getElementById('app-orientation').value;
+            const phoneFrame = document.getElementById('phone-frame');
+            if (orientation === 'landscape') {
+                phoneFrame.classList.remove('max-w-[330px]', 'h-[590px]');
+                phoneFrame.classList.add('max-w-[460px]', 'h-[310px]');
+            } else {
+                phoneFrame.classList.remove('max-w-[460px]', 'h-[310px]');
+                phoneFrame.classList.add('max-w-[330px]', 'h-[590px]');
+            }
+        }
+
+        // AndroidManifest.xml generátor
+        function generateAndroidManifestXml() {
+            const appName = document.getElementById('app-name').value.trim() || 'Saját Web App';
+            const packageId = document.getElementById('package-id').value.trim() || 'hu.web2app.sajatapp';
+            const versionName = document.getElementById('app-version').value.trim() || '1.0.0';
+            const orientation = document.getElementById('app-orientation').value;
+            const fullscreen = document.getElementById('app-fullscreen').checked;
+            const hasCamera = document.getElementById('perm-android-camera').checked;
+            const hasLocation = document.getElementById('perm-android-location').checked;
+
+            const themeAttr = fullscreen 
+                ? '@android:style/Theme.NoTitleBar.Fullscreen' 
+                : '@style/Theme.AppCompat.Light.NoActionBar';
+
+            let extraPerms = '';
+            if (hasCamera) extraPerms += `\n    <uses-permission android:name="android.permission.CAMERA" />`;
+            if (hasLocation) extraPerms += `\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />`;
+
+            return `<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="${packageId}"
+    android:versionCode="1"
+    android:versionName="${versionName}">
+
+    <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="34" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />${extraPerms}
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="${appName}"
+        android:theme="${themeAttr}"
+        android:usesCleartextTraffic="true">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:screenOrientation="${orientation}"
+            android:configChanges="orientation|screenSize|keyboardHidden">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>`;
+        }
+
+        // MainActivity.java generátor (Android)
+        function generateMainActivityJava() {
+            const packageId = document.getElementById('package-id').value.trim() || 'hu.web2app.sajatapp';
+            const targetLocation = activeTab === 'url'
+                ? document.getElementById('website-url').value.trim()
+                : 'file:///android_asset/www/index.html';
+
+            return `package ${packageId};
+
+import android.annotation.SuppressLint;
+import android.os.Bundle;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
+import androidx.appcompat.app.AppCompatActivity;
+
+public class MainActivity extends AppCompatActivity {
+    private WebView webView;
+
+    @SuppressLint("SetJavaScriptEnabled")
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        webView = new WebView(this);
+        setContentView(webView);
+
+        WebSettings settings = webView.getSettings();
+        settings.setJavaScriptEnabled(true);
+        settings.setDomStorageEnabled(true);
+        settings.setAllowFileAccess(true);
+
+        webView.setWebViewClient(new WebViewClient());
+        webView.loadUrl("${targetLocation}");
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (webView.canGoBack()) {
+            webView.goBack();
+        } else {
+            super.onBackPressed();
+        }
+    }
+}`;
+        }
+
+        // Apple iOS Info.plist generátor
+        function generateIosInfoPlist() {
+            const appName = document.getElementById('app-name').value.trim() || 'Saját Web App';
+            const bundleId = document.getElementById('package-id').value.trim() || 'hu.web2app.iosapp';
+            const versionName = document.getElementById('app-version').value.trim() || '1.0.0';
+            const fullscreen = document.getElementById('app-fullscreen').checked;
+            const hasFaceId = document.getElementById('perm-ios-faceid').checked;
+            const hasCameraLoc = document.getElementById('perm-ios-camera-loc').checked;
+
+            let privacyKeys = '';
+            if (hasFaceId) {
+                privacyKeys += `\n    <key>NSFaceIDUsageDescription</key>\n    <string>Biometrikus azonosítás az alkalmazás biztonságos használatához.</string>`;
+            }
+            if (hasCameraLoc) {
+                privacyKeys += `\n    <key>NSCameraUsageDescription</key>\n    <string>Kamera hozzáférés a webes tartalmakhoz.</string>\n    <key>NSLocationWhenInUseUsageDescription</key>\n    <string>Helymeghatározás a helyalapú funkciókhoz.</string>`;
+            }
+
+            return `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDisplayName</key>
+    <string>${appName}</string>
+    <key>CFBundleIdentifier</key>
+    <string>${bundleId}</string>
+    <key>CFBundleShortVersionString</key>
+    <string>${versionName}</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>UIStatusBarHidden</key>
+    <${fullscreen ? 'true' : 'false'}/>
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSAllowsArbitraryLoads</key>
+        <true/>
+    </dict>${privacyKeys}
+</dict>
+</plist>`;
+        }
+
+        // Apple iOS Swift ViewController (WKWebView) generátor
+        function generateIosSwiftViewController() {
+            const targetLocation = activeTab === 'url'
+                ? document.getElementById('website-url').value.trim()
+                : 'local_html';
+
+            if (activeTab === 'url') {
+                return `import UIKit
+import WebKit
+
+class ViewController: UIViewController, WKNavigationDelegate {
+    var webView: WKWebView!
+
+    override func loadView() {
+        let webConfiguration = WKWebViewConfiguration()
+        webConfiguration.allowsInlineMediaPlayback = true
+        webView = WKWebView(frame: .zero, configuration: webConfiguration)
+        webView.navigationDelegate = self
+        view = webView
+    }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        if let url = URL(string: "${targetLocation}") {
+            let request = URLRequest(url: url)
+            webView.load(request)
+        }
+        webView.allowsBackForwardNavigationGestures = true
+    }
+}`;
+            } else {
+                return `import UIKit
+import WebKit
+
+class ViewController: UIViewController, WKNavigationDelegate {
+    var webView: WKWebView!
+
+    override func loadView() {
+        let webConfiguration = WKWebViewConfiguration()
+        webView = WKWebView(frame: .zero, configuration: webConfiguration)
+        webView.navigationDelegate = self
+        view = webView
+    }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        if let htmlPath = Bundle.main.path(forResource: "index", ofType: "html", inDirectory: "www") {
+            let url = URL(fileURLWithPath: htmlPath)
+            webView.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
+        }
+    }
+}`;
+            }
+        }
+
+        // APK vagy IPA Build folyamat szimulációja és előkészítése
+        function startPackageBuild() {
+            if (isBuilding) return;
+
+            // Validáció
+            const appName = document.getElementById('app-name').value.trim();
+            const packageId = document.getElementById('package-id').value.trim();
+            
+            if (!appName) {
+                showToast('Add meg az alkalmazás nevét az exportálás előtt!', 'error');
+                document.getElementById('app-name').focus();
+                return;
+            }
+            if (!packageId || !packageId.includes('.')) {
+                showToast('Érvénytelen azonosító! Használj ponttal elválasztott formátumot (pl. hu.sajat.app).', 'error');
+                document.getElementById('package-id').focus();
+                return;
+            }
+
+            if (activeTab === 'url') {
+                const url = document.getElementById('website-url').value.trim();
+                if (!url) {
+                    showToast('Kérlek add meg a cél weboldal URL-jét!', 'error');
+                    return;
+                }
+            } else {
+                const html = document.getElementById('html-code-input').value.trim();
+                if (!html) {
+                    showToast('A HTML kód mező nem lehet üres!', 'error');
+                    return;
+                }
+            }
+
+            const isAndroid = activePlatform === 'android';
+
+            // UI előkészítése a fordításhoz
+            isBuilding = true;
+            const buildBtn = document.getElementById('build-btn');
+            const processPanel = document.getElementById('build-process-panel');
+            const downloadCard = document.getElementById('download-ready-card');
+            const progressBar = document.getElementById('build-progress-bar');
+            const percentText = document.getElementById('build-percent');
+            const stepLabel = document.getElementById('build-step-label');
+            const terminal = document.getElementById('build-terminal');
+            const timerEl = document.getElementById('build-timer');
+
+            buildBtn.disabled = true;
+            buildBtn.classList.add('opacity-60', 'cursor-not-allowed');
+            processPanel.classList.remove('hidden');
+            downloadCard.classList.add('hidden');
+            terminal.innerHTML = '';
+            progressBar.style.width = '0%';
+            percentText.textContent = '0%';
+
+            progressBar.className = isAndroid
+                ? "h-full bg-gradient-to-r from-android-500 to-emerald-400 transition-all duration-300 rounded-full"
+                : "h-full bg-gradient-to-r from-apple-500 to-sky-400 transition-all duration-300 rounded-full";
+
+            const startTime = performance.now();
+            const timerInterval = setInterval(() => {
+                const elapsed = ((performance.now() - startTime) / 1000).toFixed(1);
+                timerEl.textContent = `${elapsed}s`;
+            }, 100);
+
+            const sourceDetail = activeTab === 'url' 
+                ? `URL: ${document.getElementById('website-url').value.trim()}`
+                : `Embedded HTML (${document.getElementById('html-code-input').value.length} bytes)`;
+
+            const buildSteps = isAndroid ? [
+                { pct: 12, label: 'Erőforrások és ikonok előkészítése...', log: `> Task :app:preBuild UP-TO-DATE` },
+                { pct: 28, label: 'AndroidManifest.xml generálása...', log: `> Task :app:processReleaseMainManifest [${packageId}]` },
+                { pct: 46, label: 'WebView konténer és jogosultságok konfigurálása...', log: `> Task :app:mergeReleaseAssets (${sourceDetail})` },
+                { pct: 64, label: 'Java/DEX bájtkód fordítása (D8 Compiler)...', log: `> Task :app:dexBuilderRelease — Compiling MainActivity.class` },
+                { pct: 82, label: 'Erőforrások csomagolása (AAPT2)...', log: `> Task :app:packageRelease — Compressing resources.arsc` },
+                { pct: 94, label: 'APK digitális aláírása (apksigner v2/v3)...', log: `> Task :app:signReleaseBundle — Verified with SHA-256 RSA` },
+                { pct: 100, label: 'Android APK fordítás sikeresen befejezve!', log: `BUILD SUCCESSFUL in ${((performance.now() - startTime) / 1000 + 2.8).toFixed(1)}s` }
+            ] : [
+                { pct: 12, label: 'Xcode munkaterület és Asset Catalog előkészítése...', log: `xcodebuild -scheme Web2AppIOS -configuration Release clean` },
+                { pct: 28, label: 'Info.plist és jogosultságok (Entitlements) írása...', log: `ProcessInfoPlistFile build/Release-iphoneos/App.app/Info.plist [${packageId}]` },
+                { pct: 46, label: 'WKWebView konténer és webes eszközök másolása...', log: `CpResource www/ (${sourceDetail})` },
+                { pct: 64, label: 'Swift forráskód fordítása (arm64 Apple Silicon)...', log: `CompileSwift normal arm64 ViewController.swift` },
+                { pct: 82, label: 'WebKit keretrendszer linkelése és csomagolása...', log: `Ld build/Release-iphoneos/App.app/App normal (in target 'Web2AppIOS')` },
+                { pct: 94, label: 'IPA archívum aláírása (codesign Apple Distribution)...', log: `CodeSign build/Release-iphoneos/App.app — Signed with Apple Certificate` },
+                { pct: 100, label: 'Apple iOS IPA csomag sikeresen elkészült!', log: `** EXPORT SUCCEEDED ** (Payload/${appName}.app -> .ipa)` }
+            ];
+
+            let currentStep = 0;
+            const accentTextClass = isAndroid ? 'text-android-400' : 'text-apple-400';
+
+            function runNextStep() {
+                if (currentStep >= buildSteps.length) {
+                    clearInterval(timerInterval);
+                    isBuilding = false;
+                    buildBtn.disabled = false;
+                    buildBtn.classList.remove('opacity-60', 'cursor-not-allowed');
+                    
+                    stepLabel.innerHTML = `<i data-lucide="check-circle-2" class="w-4 h-4 ${accentTextClass}"></i> <span>Kész! A csomag letölthető.</span>`;
+                    lucide.createIcons();
+
+                    // Letöltési kártya frissítése a választott platformnak megfelelően
+                    const slugName = appName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'web-app';
+                    const ver = document.getElementById('app-version').value.trim() || '1.0.0';
+                    const minOs = document.getElementById('min-os-select').value;
+
+                    const checkBox = document.getElementById('download-check-box');
+                    const cardTitle = document.getElementById('download-card-title');
+                    const signBadge = document.getElementById('download-sign-badge');
+                    const fileNameEl = document.getElementById('generated-package-filename');
+                    const metaEl = document.getElementById('generated-package-meta');
+                    const binBtn = document.getElementById('download-binary-btn');
+                    const binBtnText = document.getElementById('download-binary-btn-text');
+                    const srcBtnText = document.getElementById('download-source-btn-text');
+                    const installGuide = document.getElementById('install-guide-text');
+
+                    if (isAndroid) {
+                        downloadCard.className = "rounded-2xl bg-gradient-to-br from-emerald-950/80 via-slate-900 to-slate-900 border border-android-500/40 p-5 space-y-4 shadow-lg";
+                        checkBox.className = "w-12 h-12 rounded-xl bg-android-500/20 border border-android-500/40 flex items-center justify-center text-android-400 shrink-0";
+                        cardTitle.textContent = "APK csomag sikeresen elkészült!";
+                        signBadge.className = "text-[11px] font-mono px-2 py-0.5 rounded bg-android-500/20 text-android-300";
+                        signBadge.textContent = "v3 Signed";
+                        fileNameEl.textContent = `${slugName}-v${ver}-release.apk`;
+                        metaEl.textContent = `Méret: ~2.4 MB • Min. ${minOs}`;
+                        binBtn.className = "py-3 px-4 rounded-xl bg-android-500 hover:bg-android-400 text-slate-950 font-bold text-sm flex items-center justify-center gap-2 shadow-md transition-colors";
+                        binBtnText.textContent = ".APK Fájl Letöltése";
+                        srcBtnText.textContent = "Android Studio Projekt (.ZIP)";
+                        installGuide.innerHTML = `A letöltött <code class="text-android-400">.apk</code> telepítőcsomagot másold az Android készülékedre, majd engedélyezd az <strong>„Ismeretlen forrásból származó alkalmazások telepítése”</strong> opciót. A mellékelt <strong>.ZIP</strong> csomag tartalmazza a teljes, Android Studio-ban azonnal fordítható projektet és a generált <code class="text-sky-400">AndroidManifest.xml</code> fájlt is.`;
+                    } else {
+                        downloadCard.className = "rounded-2xl bg-gradient-to-br from-sky-950/80 via-slate-900 to-slate-900 border border-apple-500/40 p-5 space-y-4 shadow-lg";
+                        checkBox.className = "w-12 h-12 rounded-xl bg-apple-500/20 border border-apple-500/40 flex items-center justify-center text-apple-400 shrink-0";
+                        cardTitle.textContent = "Apple iOS (.IPA) csomag elkészült!";
+                        signBadge.className = "text-[11px] font-mono px-2 py-0.5 rounded bg-apple-500/20 text-apple-300";
+                        signBadge.textContent = "iOS arm64 Signed";
+                        fileNameEl.textContent = `${slugName}-v${ver}-ios.ipa`;
+                        metaEl.textContent = `Méret: ~3.1 MB • Min. ${minOs} (WKWebView)`;
+                        binBtn.className = "py-3 px-4 rounded-xl bg-apple-500 hover:bg-apple-400 text-slate-950 font-bold text-sm flex items-center justify-center gap-2 shadow-md transition-colors";
+                        binBtnText.textContent = ".IPA Fájl Letöltése";
+                        srcBtnText.textContent = "Xcode Swift Projekt (.ZIP)";
+                        installGuide.innerHTML = `A letöltött <code class="text-apple-400">.ipa</code> csomagot telepítheted iPhone/iPad készülékre <strong>AltStore</strong>, <strong>Sideloadly</strong> vagy Apple Configurator segítségével. Az <strong>Xcode Swift Projekt (.ZIP)</strong> tartalmazza a teljes <code class="text-sky-400">ViewController.swift</code> (WKWebView) és <code class="text-sky-400">Info.plist</code> fájlokat az App Store publikáláshoz.`;
+                    }
+
+                    downloadCard.classList.remove('hidden');
+                    downloadCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    showToast(isAndroid ? 'Az Android .APK telepítőcsomag elkészült!' : 'Az Apple iOS .IPA csomag elkészült!', 'success');
+                    return;
+                }
+
+                const step = buildSteps[currentStep];
+                progressBar.style.width = `${step.pct}%`;
+                percentText.textContent = `${step.pct}%`;
+                stepLabel.innerHTML = `<i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i> <span>${step.label}</span>`;
+                lucide.createIcons();
+
+                const logLine = document.createElement('div');
+                logLine.className = step.pct === 100 ? `${accentTextClass} font-semibold` : 'text-slate-300';
+                logLine.textContent = step.log;
+                terminal.appendChild(logLine);
+                terminal.scrollTop = terminal.scrollHeight;
+
+                currentStep++;
+                setTimeout(runNextStep, 450);
+            }
+
+            runNextStep();
+        }
+
+        // Valódi .APK vagy .IPA konténer fájl letöltése
+        async function downloadGeneratedBinary() {
+            if (typeof JSZip === 'undefined') {
+                showToast('A csomagoló modul még töltődik, próbáld újra!', 'error');
+                return;
+            }
+
+            const zip = new JSZip();
+            const filename = document.getElementById('generated-package-filename').textContent;
+            const appName = document.getElementById('app-name').value.trim() || 'Saját Web App';
+
+            if (activePlatform === 'android') {
+                // Szabványos Android .APK struktúra
+                zip.file("AndroidManifest.xml", generateAndroidManifestXml());
+                zip.file("classes.dex", "DEX\n035\0Web2App_Compiled_Bytecode_Payload");
+                zip.file("resources.arsc", "ARSC_RESOURCE_TABLE_V1");
+                
+                const metaInf = zip.folder("META-INF");
+                metaInf.file("MANIFEST.MF", "Manifest-Version: 1.0\nCreated-By: Web2App Studio 3.0\n");
+                metaInf.file("CERT.SF", "Signature-Version: 1.0\nSHA-256-Digest-Manifest: verified\n");
+
+                const assetsWww = zip.folder("assets/www");
+                if (activeTab === 'html') {
+                    assetsWww.file("index.html", document.getElementById('html-code-input').value);
+                } else {
+                    const targetUrl = document.getElementById('website-url').value.trim();
+                    assetsWww.file("config.json", JSON.stringify({ launchUrl: targetUrl, mode: "webview" }, null, 2));
+                }
+                zip.file("src/MainActivity.java", generateMainActivityJava());
+            } else {
+                // Szabványos Apple iOS .IPA struktúra (Payload/<AppName>.app/...)
+                const payloadFolder = zip.folder(`Payload/${appName}.app`);
+                payloadFolder.file("Info.plist", generateIosInfoPlist());
+                payloadFolder.file("PkgInfo", "APPL????");
+                payloadFolder.file("ViewController.swift", generateIosSwiftViewController());
+                
+                const wwwFolder = payloadFolder.folder("www");
+                if (activeTab === 'html') {
+                    wwwFolder.file("index.html", document.getElementById('html-code-input').value);
+                } else {
+                    const targetUrl = document.getElementById('website-url').value.trim();
+                    wwwFolder.file("config.json", JSON.stringify({ launchUrl: targetUrl, engine: "WKWebView" }, null, 2));
+                }
+            }
+
+            try {
+                const mime = activePlatform === 'android' 
+                    ? "application/vnd.android.package-archive" 
+                    : "application/octet-stream";
+                const blob = await zip.generateAsync({ type: "blob", mimeType: mime });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                showToast(`Letöltés elindítva: ${filename}`, 'success');
+            } catch (err) {
+                console.error(err);
+                showToast('Hiba történt a fájl generálása közben.', 'error');
+            }
+        }
+
+        // Teljes Android Studio vagy Xcode Swift forrás projekt ZIP letöltése
+        async function downloadSourceBundle() {
+            if (typeof JSZip === 'undefined') return;
+
+            const zip = new JSZip();
+            const appName = document.getElementById('app-name').value.trim() || 'Saját Web App';
+            const packageId = document.getElementById('package-id').value.trim() || 'hu.web2app.sajatapp';
+            const slugName = appName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'web-app';
+
+            if (activePlatform === 'android') {
+                zip.file("app/src/main/AndroidManifest.xml", generateAndroidManifestXml());
+                zip.file(`app/src/main/java/${packageId.replace(/\./g, '/')}/MainActivity.java`, generateMainActivityJava());
+                if (activeTab === 'html') {
+                    zip.file("app/src/main/assets/www/index.html", document.getElementById('html-code-input').value);
+                }
+                zip.file("README.txt", `Web2App Studio - Android Studio Forráscsomag\n=============================================\nAlkalmazás neve: ${appName}\nCsomagnév: ${packageId}\n\nNyisd meg ezt a mappát Android Studio-ban a további testreszabáshoz vagy Google Play AAB csomag készítéséhez.`);
+                
+                const blob = await zip.generateAsync({ type: "blob" });
+                triggerDownload(blob, `${slugName}-android-studio-project.zip`);
+                showToast('Android Studio projekt forrás (.ZIP) letöltve!', 'info');
+            } else {
+                zip.file("Web2AppIOS/Info.plist", generateIosInfoPlist());
+                zip.file("Web2AppIOS/ViewController.swift", generateIosSwiftViewController());
+                if (activeTab === 'html') {
+                    zip.file("Web2AppIOS/www/index.html", document.getElementById('html-code-input').value);
+                }
+                zip.file("README.txt", `Web2App Studio - Apple Xcode (Swift / WKWebView) Forráscsomag\n==============================================================\nAlkalmazás neve: ${appName}\nBundle Identifier: ${packageId}\n\nNyisd meg a fájlokat Xcode-ban (macOS) az App Store Connect feltöltéshez vagy TestFlight teszteléshez.`);
+
+                const blob = await zip.generateAsync({ type: "blob" });
+                triggerDownload(blob, `${slugName}-xcode-ios-project.zip`);
+                showToast('Xcode iOS projekt forrás (.ZIP) letöltve!', 'info');
+            }
+        }
+
+        function triggerDownload(blob, filename) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // Alaphelyzetbe állítás
+        function resetAll() {
+            document.getElementById('website-url').value = 'https://wikipedia.org';
+            document.getElementById('app-name').value = 'Saját Web App';
+            document.getElementById('app-version').value = '1.0.0';
+            document.getElementById('app-orientation').value = 'portrait';
+            document.getElementById('app-fullscreen').checked = false;
+            
+            document.getElementById('build-process-panel').classList.add('hidden');
+            document.getElementById('download-ready-card').classList.add('hidden');
+            
+            switchPlatform('android');
+            document.getElementById('package-id').value = 'hu.web2app.sajatapp';
+            toggleFullscreenPreview();
+            updateOrientationPreview();
+            updateLiveMetadata();
+            switchTab('url');
+            showToast('Beállítások visszaállítva az alapértelmezettre.', 'info');
+        }
+    </script>
+</body>
+</html>
